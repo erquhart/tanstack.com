@@ -5,6 +5,7 @@ import { loadDocs } from '~/utils/docs'
 import { getBranch, getLibrary } from '~/libraries'
 import { capitalize } from '~/utils/utils'
 import { DocContainer } from '~/components/DocContainer'
+import * as TooltipPrimitive from '@radix-ui/react-tooltip'
 
 export const Route = createFileRoute(
   '/$libraryId/$version/docs/framework/$framework/$'
@@ -46,17 +47,19 @@ function Docs() {
   const branch = getBranch(library, version)
 
   return (
-    <DocContainer>
-      <Doc
-        title={title}
-        content={content}
-        repo={library.repo}
-        branch={branch}
-        filePath={filePath}
-        colorFrom={library.colorFrom}
-        colorTo={library.colorTo}
-        shouldRenderToc
-      />
-    </DocContainer>
+    <TooltipPrimitive.Provider>
+      <DocContainer>
+        <Doc
+          title={title}
+          content={content}
+          repo={library.repo}
+          branch={branch}
+          filePath={filePath}
+          colorFrom={library.colorFrom}
+          colorTo={library.colorTo}
+          shouldRenderToc
+        />
+      </DocContainer>
+    </TooltipPrimitive.Provider>
   )
 }

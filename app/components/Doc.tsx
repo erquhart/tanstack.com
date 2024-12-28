@@ -7,6 +7,59 @@ import { DocTitle } from '~/components/DocTitle'
 import { Markdown } from '~/components/Markdown'
 import { Toc } from './Toc'
 import { twMerge } from 'tailwind-merge'
+import * as Selection from 'selection-popover'
+import * as TooltipPrimitive from '@radix-ui/react-tooltip'
+import { Slot } from '@radix-ui/react-slot'
+import {
+  TwitterLogoIcon,
+  GitHubLogoIcon,
+  CopyIcon,
+} from '@radix-ui/react-icons'
+
+type ButtonElement = React.ElementRef<'button'>
+type ButtonProps = React.ComponentPropsWithoutRef<'button'> & {
+  asChild?: boolean
+}
+
+export const Button = React.forwardRef<ButtonElement, ButtonProps>(
+  ({ className, asChild = false, ...props }, forwardedRef) => {
+    const Comp = asChild ? Slot : 'button'
+    return (
+      <Comp
+        {...props}
+        ref={forwardedRef}
+        className={twMerge(
+          'h-7 px-1 rounded text-mauve11 hover:bg-violet3 hover:text-violet11 inline-flex items-center justify-center gap-2 text-sm outline-none leading-none',
+          'focus:ring-2 focus:ring-violet7',
+          className
+        )}
+      />
+    )
+  }
+)
+Button.displayName = 'Button'
+
+type TooltipProps = {
+  children: React.ReactNode
+  content: string
+}
+export const Tooltip = ({ children, content }: TooltipProps) => {
+  return (
+    <TooltipPrimitive.Root>
+      <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
+      <TooltipPrimitive.Portal>
+        <TooltipPrimitive.Content
+          className="text-violet11 select-none rounded-[4px] bg-white px-[15px] py-[10px] text-[15px] leading-none shadow-[hsl(206_22%_7%_/_35%)_0px_10px_38px_-10px,_hsl(206_22%_7%_/_20%)_0px_10px_20px_-15px] will-change-[transform,opacity] data-[state=delayed-open]:animate-slideDownAndFade"
+          side="top"
+          sideOffset={5}
+        >
+          {content}
+          <TooltipPrimitive.Arrow className="fill-white" />
+        </TooltipPrimitive.Content>
+      </TooltipPrimitive.Portal>
+    </TooltipPrimitive.Root>
+  )
+}
 
 type DocProps = {
   title: string
@@ -44,48 +97,99 @@ export function Doc({
   const isTocVisible = shouldRenderToc && headings && headings.length > 1
 
   return (
-    <div
-      className={twMerge(
-        'w-full flex bg-white/70 dark:bg-black/50 mx-auto rounded-xl max-w-[936px]',
-        isTocVisible && 'max-w-full'
-      )}
+    <Selection.Root
+      onOpenChange={(isOpen) => {
+        console.log(isOpen)
+        console.log(window.getSelection()?.toString())
+      }}
     >
-      <div
-        className={twMerge(
-          'flex overflow-auto flex-col w-full p-4 lg:p-6',
-          isTocVisible && 'border-r border-gray-500/20 !pr-0'
-        )}
-      >
-        {title ? <DocTitle>{title}</DocTitle> : null}
-        <div className="h-4" />
-        <div className="h-px bg-gray-500 opacity-20" />
-        <div className="h-4" />
+      <Selection.Trigger asChild>
         <div
           className={twMerge(
-            'prose prose-gray prose-sm prose-p:leading-7 dark:prose-invert max-w-none',
-            isTocVisible && 'pr-4 lg:pr-6'
+            'w-full flex bg-white/70 dark:bg-black/50 mx-auto rounded-xl max-w-[936px]',
+            isTocVisible && 'max-w-full'
           )}
         >
-          <Markdown htmlMarkup={markup} />
-        </div>
-        <div className="h-12" />
-        <div className="w-full h-px bg-gray-500 opacity-30" />
-        <div className="py-4 opacity-70">
-          <a
-            href={`https://github.com/${repo}/tree/${branch}/${filePath}`}
-            className="flex items-center gap-2"
+          <div
+            className={twMerge(
+              'flex overflow-auto flex-col w-full p-4 lg:p-6',
+              isTocVisible && 'border-r border-gray-500/20 !pr-0'
+            )}
           >
-            <FaEdit /> Edit on GitHub
-          </a>
-        </div>
-        <div className="h-24" />
-      </div>
+            {title ? <DocTitle>{title}</DocTitle> : null}
+            <div className="h-4" />
+            <div className="h-px bg-gray-500 opacity-20" />
+            <div className="h-4" />
+            <div
+              className={twMerge(
+                'prose prose-gray prose-sm prose-p:leading-7 dark:prose-invert max-w-none',
+                isTocVisible && 'pr-4 lg:pr-6'
+              )}
+            >
+              <Markdown htmlMarkup={markup} />
+            </div>
+            <div className="h-12" />
+            <div className="w-full h-px bg-gray-500 opacity-30" />
+            <div className="py-4 opacity-70">
+              <a
+                href={`https://github.com/${repo}/tree/${branch}/${filePath}`}
+                className="flex items-center gap-2"
+              >
+                <FaEdit /> Edit on GitHub
+              </a>
+            </div>
+            <div className="h-24" />
+          </div>
 
-      {isTocVisible && (
-        <div className="max-w-52 w-full hidden 2xl:block transition-all">
-          <Toc headings={headings} colorFrom={colorFrom} colorTo={colorTo} />
+          {isTocVisible && (
+            <div className="max-w-52 w-full hidden 2xl:block transition-all">
+              <Toc
+                headings={headings}
+                colorFrom={colorFrom}
+                colorTo={colorTo}
+              />
+            </div>
+          )}
         </div>
-      )}
-    </div>
+      </Selection.Trigger>
+      <Selection.Portal>
+        <Selection.Content
+          sideOffset={8}
+          className={twMerge(
+            'flex items-center gap-1 w-full min-w-max rounded-md bg-white shadow-xl shadow-blackA6 px-2.5 h-10',
+            'data-[state=open]:animate-slideDownAndFade data-[state=closed]:animate-slideUpAndFade'
+          )}
+        >
+          <Tooltip content="Copy">
+            <Button>
+              <CopyIcon className="w-5 h-5" />
+            </Button>
+          </Tooltip>
+          <Tooltip content="Share on Twitter">
+            <Button asChild>
+              <a
+                href="https://twitter.com/joaom__00"
+                target="_blank"
+                rel="noreferrer noopener"
+              >
+                <TwitterLogoIcon className="w-5 h-5" />
+              </a>
+            </Button>
+          </Tooltip>
+          <Tooltip content="Share on GitHub">
+            <Button asChild>
+              <a
+                href="https://github.com/joaom00"
+                target="_blank"
+                rel="noreferrer noopener"
+              >
+                <GitHubLogoIcon className="w-5 h-5" />
+              </a>
+            </Button>
+          </Tooltip>
+          <Selection.Arrow className="fill-white" />
+        </Selection.Content>
+      </Selection.Portal>
+    </Selection.Root>
   )
 }
