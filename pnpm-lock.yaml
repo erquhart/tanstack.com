@@ -128,6 +128,9 @@ importers:
       marked-gfm-heading-id:
         specifier: ^4.0.0
         version: 4.0.0(marked@13.0.2)
+      marked-sequential-hooks:
+        specifier: ^1.2.2
+        version: 1.2.2(marked@13.0.2)
       qss:
         specifier: ^3.0.0
         version: 3.0.0
@@ -5340,6 +5343,11 @@ packages:
     resolution: {integrity: sha512-D1GOkcdzP+1dzjoColL7umojefFrASDuLeyaHS0Zr/Uo9jkr1V6vpLRCzfi1djmEaWyK0SYMFtHnpkZ+cwFT1w==}
     peerDependencies:
       marked: '>=4 <15'
+
+  marked-sequential-hooks@1.2.2:
+    resolution: {integrity: sha512-LBXiFydzkozuM19GXhijh2T5kP7AJ0vFY7m5uwX/UZFJaceOg++pLd2fZXnHDj0eFcUOkEEvaIN3Pl9dpm4YtQ==}
+    peerDependencies:
+      marked: '>=7.0.0'
 
   marked@13.0.2:
     resolution: {integrity: sha512-J6CPjP8pS5sgrRqxVRvkCIkZ6MFdRIjDkwUwgJ9nL2fbmM6qGQeB2C16hi8Cc9BOzj6xXzy0jyi0iPIfnMHYzA==}
@@ -12613,6 +12621,10 @@ snapshots:
       marked: 13.0.2
 
   marked-highlight@2.1.4(marked@13.0.2):
+    dependencies:
+      marked: 13.0.2
+
+  marked-sequential-hooks@1.2.2(marked@13.0.2):
     dependencies:
       marked: 13.0.2
 

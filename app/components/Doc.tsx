@@ -15,6 +15,10 @@ import {
   GitHubLogoIcon,
   CopyIcon,
 } from '@radix-ui/react-icons'
+import markedSequentialHooks, {
+  MarkdownHook,
+  type HtmlHook,
+} from 'marked-sequential-hooks'
 
 type ButtonElement = React.ElementRef<'button'>
 type ButtonProps = React.ComponentPropsWithoutRef<'button'> & {
@@ -72,6 +76,21 @@ type DocProps = {
   colorTo?: string
 }
 
+const layoutHook: HtmlHook = (html, data) => {
+  console.log('layoutHook')
+  console.log('data', data)
+  console.log('html', html)
+  return html
+}
+
+const myHook: MarkdownHook = (markdown, data) => {
+  console.log('myHook')
+  console.log('data', data)
+  console.log('markdown', markdown)
+
+  return markdown
+}
+
 export function Doc({
   title,
   content,
@@ -86,7 +105,11 @@ export function Doc({
     const markup = marked.use(
       { gfm: true },
       gfmHeadingId(),
-      markedAlert()
+      markedAlert(),
+      markedSequentialHooks({
+        markdownHooks: [myHook],
+        htmlHooks: [layoutHook],
+      })
     )(content) as string
 
     const headings = getHeadingList()
@@ -100,26 +123,26 @@ export function Doc({
     <Selection.Root
       onOpenChange={(isOpen) => {
         console.log(isOpen)
-        console.log(window.getSelection()?.toString())
+        console.log(window.getSelection())
       }}
     >
-      <Selection.Trigger asChild>
+      <div
+        className={twMerge(
+          'w-full flex bg-white/70 dark:bg-black/50 mx-auto rounded-xl max-w-[936px]',
+          isTocVisible && 'max-w-full'
+        )}
+      >
         <div
           className={twMerge(
-            'w-full flex bg-white/70 dark:bg-black/50 mx-auto rounded-xl max-w-[936px]',
-            isTocVisible && 'max-w-full'
+            'flex overflow-auto flex-col w-full p-4 lg:p-6',
+            isTocVisible && 'border-r border-gray-500/20 !pr-0'
           )}
         >
-          <div
-            className={twMerge(
-              'flex overflow-auto flex-col w-full p-4 lg:p-6',
-              isTocVisible && 'border-r border-gray-500/20 !pr-0'
-            )}
-          >
-            {title ? <DocTitle>{title}</DocTitle> : null}
-            <div className="h-4" />
-            <div className="h-px bg-gray-500 opacity-20" />
-            <div className="h-4" />
+          {title ? <DocTitle>{title}</DocTitle> : null}
+          <div className="h-4" />
+          <div className="h-px bg-gray-500 opacity-20" />
+          <div className="h-4" />
+          <Selection.Trigger asChild>
             <div
               className={twMerge(
                 'prose prose-gray prose-sm prose-p:leading-7 dark:prose-invert max-w-none',
@@ -128,30 +151,26 @@ export function Doc({
             >
               <Markdown htmlMarkup={markup} />
             </div>
-            <div className="h-12" />
-            <div className="w-full h-px bg-gray-500 opacity-30" />
-            <div className="py-4 opacity-70">
-              <a
-                href={`https://github.com/${repo}/tree/${branch}/${filePath}`}
-                className="flex items-center gap-2"
-              >
-                <FaEdit /> Edit on GitHub
-              </a>
-            </div>
-            <div className="h-24" />
+          </Selection.Trigger>
+          <div className="h-12" />
+          <div className="w-full h-px bg-gray-500 opacity-30" />
+          <div className="py-4 opacity-70">
+            <a
+              href={`https://github.com/${repo}/tree/${branch}/${filePath}`}
+              className="flex items-center gap-2"
+            >
+              <FaEdit /> Edit on GitHub
+            </a>
           </div>
-
-          {isTocVisible && (
-            <div className="max-w-52 w-full hidden 2xl:block transition-all">
-              <Toc
-                headings={headings}
-                colorFrom={colorFrom}
-                colorTo={colorTo}
-              />
-            </div>
-          )}
+          <div className="h-24" />
         </div>
-      </Selection.Trigger>
+
+        {isTocVisible && (
+          <div className="max-w-52 w-full hidden 2xl:block transition-all">
+            <Toc headings={headings} colorFrom={colorFrom} colorTo={colorTo} />
+          </div>
+        )}
+      </div>
       <Selection.Portal>
         <Selection.Content
           sideOffset={8}

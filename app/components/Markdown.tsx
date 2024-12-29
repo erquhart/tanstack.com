@@ -76,6 +76,11 @@ const markdownComponents: Record<string, React.FC> = {
       // decoding="async"
     />
   ),
+  p: (props) => {
+    console.log(typeof props.children)
+    console.log(props.children)
+    return <p {...props} />
+  },
 }
 
 function CodeBlock(props: React.HTMLProps<HTMLPreElement>) {
