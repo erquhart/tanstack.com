@@ -103,6 +103,7 @@ const markdownComponents: Record<
     ) => void
     index: number
   }) => {
+    /*
     const elementHighlights = highlights
       .filter((h) => h.path[0] === index)
       .sort((a, b) => a.anchorIndex - b.anchorIndex)
@@ -111,9 +112,9 @@ const markdownComponents: Record<
     }
     return (
       <p {...props}>
+        {children?.slice(0, elementHighlights[0].anchorIndex)}
         {elementHighlights.map((highlight, index) => (
           <>
-            {children?.slice(0, highlight.anchorIndex)}
             <Mark
               className="bg-yellow-500"
               onClickMark={(ref) => onClickMark(ref, highlight._id)}
@@ -124,6 +125,30 @@ const markdownComponents: Record<
             {children?.slice(highlight.focusIndex)}
           </>
         ))}
+      </p>
+    )
+      */
+    const highlight = highlights.find((h) => h.path[0] === index)
+    if (!highlight) {
+      return <p {...props}>{children}</p>
+    }
+    try {
+      const a = children?.slice(0, highlight.anchorIndex)
+    } catch (e) {
+      console.log('children', children)
+      console.log('error', e)
+    }
+    return (
+      <p {...props}>
+        {children?.slice(0, highlight.anchorIndex)}
+        <Mark
+          className="bg-yellow-500"
+          onClickMark={(ref) => onClickMark(ref, highlight._id)}
+          markId={highlight._id}
+        >
+          {children?.slice(highlight.anchorIndex, highlight.focusIndex)}
+        </Mark>
+        {children?.slice(highlight.focusIndex)}
       </p>
     )
   },
@@ -286,9 +311,6 @@ const getOptions = (
 ): HTMLReactParserOptions => {
   const options: HTMLReactParserOptions = {
     replace: (domNode, index) => {
-      if (domNode.name === 'p') {
-        console.log('domNode', domNode)
-      }
       if (domNode instanceof Element && domNode.attribs) {
         if (
           domNode.children.some((node) =>

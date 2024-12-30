@@ -93,6 +93,7 @@ function Doc({
   colorTo,
   containerRef,
   selectionPath,
+  setSelectionPath,
 }: DocProps & {
   containerRef: React.RefObject<HTMLDivElement>
   selectionPath: number[]
@@ -219,6 +220,8 @@ function Doc({
                   anchorIndex,
                   focusIndex,
                 })
+                setSelectionPath([])
+                context.onClose()
               }
             }}
           >
@@ -228,22 +231,10 @@ function Doc({
             <CopyIcon className="w-5 h-5 text-gray-500" />
           </Button>
           <Button asChild>
-            <a
-              href="https://twitter.com/joaom__00"
-              target="_blank"
-              rel="noreferrer noopener"
-            >
-              <TwitterLogoIcon className="w-5 h-5 text-gray-500" />
-            </a>
+            <TwitterLogoIcon className="w-5 h-5 text-gray-500" />
           </Button>
           <Button asChild>
-            <a
-              href="https://github.com/joaom00"
-              target="_blank"
-              rel="noreferrer noopener"
-            >
-              <GitHubLogoIcon className="w-5 h-5 text-gray-500" />
-            </a>
+            <GitHubLogoIcon className="w-5 h-5 text-gray-500" />
           </Button>
           <Selection.Arrow className="fill-white" />
         </Selection.Content>
@@ -253,6 +244,7 @@ function Doc({
 }
 
 function DocWithSelection(props: DocProps) {
+  const [tooltipIsOpen, setTooltipIsOpen] = useState(false)
   const containerRef = React.useRef<HTMLDivElement>(null)
   const [selectionPath, setSelectionPath] = useState<number[]>([])
   const getPath = (
@@ -283,7 +275,13 @@ function DocWithSelection(props: DocProps) {
   }
   return (
     <Selection.Root
+      open={tooltipIsOpen}
       onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          setSelectionPath([])
+          setTooltipIsOpen(false)
+          return
+        }
         const selection = window.getSelection()
         if (!selection?.anchorNode || !selection?.focusNode) {
           return
@@ -294,10 +292,11 @@ function DocWithSelection(props: DocProps) {
           selection?.anchorOffset,
           selection?.focusOffset
         )
-        if (!path) {
+        if (!path || selection?.anchorNode !== selection?.focusNode) {
           return
         }
         setSelectionPath(path)
+        setTooltipIsOpen(true)
       }}
     >
       <Doc
