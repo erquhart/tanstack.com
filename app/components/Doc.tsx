@@ -17,6 +17,9 @@ import {
   Pencil1Icon,
 } from '@radix-ui/react-icons'
 import { useState } from 'react'
+import { api } from 'convex/_generated/api'
+import { useQuery } from 'convex/react'
+import { useMutation } from 'convex/react'
 
 type ButtonElement = React.ElementRef<'button'>
 type ButtonProps = React.ComponentPropsWithoutRef<'button'> & {
@@ -84,14 +87,14 @@ export function Doc({
   colorFrom,
   colorTo,
 }: DocProps) {
-  const [selection, setSelection] = useState<{
-    text: string
-    index: number
-  } | null>(null)
-  const [highlights, setHighlights] = useState<number[]>([])
+  const [selectionPath, setSelectionPath] = useState<number[]>([])
   const containerRef = React.useRef<HTMLDivElement>(null)
-  console.log('whole selection', selection)
-  console.log('highlights', highlights)
+
+  const setHighlight = useMutation(api.highlight.highlight)
+  const deleteHighlight = useMutation(api.highlight.deleteHighlight)
+  const highlights = useQuery(api.highlight.getHighlights, {
+    title: title,
+  })
 
   const { markup, headings } = React.useMemo(() => {
     const markup = marked.use(
@@ -106,42 +109,49 @@ export function Doc({
   }, [content])
 
   const isTocVisible = shouldRenderToc && headings && headings.length > 1
-  const getPath = (selection: Selection) => {
-    const path = [selection.anchorOffset]
-    const currentNode = selection
-    /*
-    while (currentNode?.parentNode !== containerRef.current) {
-      node = node.parentNode as Node
+  const getPath = (
+    selectedNode: Node,
+    focusNode: Node,
+    anchorOffset: number,
+    focusOffset: number
+  ) => {
+    if (selectedNode.parentNode !== focusNode.parentNode) {
+      return
     }
-      */
+    const path = [anchorOffset, focusOffset]
+    let currentNode = selectedNode
+    while (currentNode && currentNode !== containerRef.current) {
+      const index = Array.from(
+        currentNode?.parentNode?.childNodes || []
+      ).indexOf(currentNode as ChildNode)
+      if (index < 0) {
+        console.log('not found', currentNode, 'in', currentNode?.parentNode)
+      }
+      console.log('index', index)
+      console.log('path', path)
+      console.log('currentNode', currentNode)
+      path.unshift(index)
+      currentNode = currentNode?.parentNode as Node
+    }
     return path
   }
   return (
     <Selection.Root
       onOpenChange={(isOpen) => {
         const selection = window.getSelection()
-        console.log(
-          'selection',
-          selection,
-          selection?.anchorNode,
-          selection?.anchorNode?.parentNode,
-          selection?.anchorNode?.parentNode?.parentNode
-        )
-        if (selection?.anchorNode?.parentNode) {
-          console.log(
-            'path',
-            getPath(selection?.anchorNode?.parentNode, selection?.anchorOffset)
-          )
-        }
-        const text = selection?.toString()
-        const index = selection?.anchorOffset
-        if (!text || typeof index !== 'number') {
+        if (!selection?.anchorNode || !selection?.focusNode) {
           return
         }
-        setSelection({
-          text,
-          index,
-        })
+        const path = getPath(
+          selection?.anchorNode,
+          selection?.focusNode,
+          selection?.anchorOffset,
+          selection?.focusOffset
+        )
+        if (!path) {
+          return
+        }
+        setSelectionPath(path)
       }}
     >
       <div
@@ -170,7 +180,7 @@ export function Doc({
             >
               <Markdown
                 htmlMarkup={markup}
-                highlights={highlights.map((index) => index)}
+                highlights={highlights?.map((h) => h.path) ?? []}
               />
             </div>
           </Selection.Trigger>
@@ -202,9 +212,18 @@ export function Doc({
           )}
         >
           <Button
-            onClick={() => {
-              if (selection) {
-                setHighlights([...highlights, selection.index])
+            onClick={(e) => {
+              if (highlights?.some((h) => h.path === selectionPath)) {
+                deleteHighlight({
+                  id: highlights.find((h) => h.path === selectionPath)?.id,
+                })
+                return
+              }
+              if (selectionPath.length > 0 && selectionPath[1] === 0) {
+                setHighlight({
+                  title: title,
+                  path: selectionPath,
+                })
               }
             }}
           >

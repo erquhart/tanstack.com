@@ -209,18 +209,26 @@ const getHighlighter = cache(async (language: string, themes: string[]) => {
   return highlighter
 })
 
-const getOptions = (highlights: number[]): HTMLReactParserOptions => {
+const getOptions = (highlights: number[][]): HTMLReactParserOptions => {
   const options: HTMLReactParserOptions = {
     replace: (domNode, index) => {
       if (domNode instanceof Element && domNode.attribs) {
         const replacer =
           domNode.name === 'p'
-            ? (props) => {
-                if (highlights.includes(index)) {
-                  console.log('highlight', highlights, index)
-                  return <p {...props} className="bg-yellow-500" />
+            ? ({ children, ...props }) => {
+                const highlight = highlights.find((h) => h[0] === index)
+                if (highlight) {
+                  return (
+                    <p {...props}>
+                      {children.slice(0, highlight[2])}
+                      <mark className="bg-yellow-500">
+                        {children.slice(highlight[2], highlight[3])}
+                      </mark>
+                      {children.slice(highlight[3])}
+                    </p>
+                  )
                 }
-                return <p {...props} />
+                return <p {...props}>{children}</p>
               }
             : markdownComponents[domNode.name]
         if (replacer) {
@@ -241,7 +249,7 @@ const getOptions = (highlights: number[]): HTMLReactParserOptions => {
 type MarkdownProps = {
   rawContent?: string
   htmlMarkup?: string
-  highlights: number[]
+  highlights: number[][]
 }
 
 export function Markdown({

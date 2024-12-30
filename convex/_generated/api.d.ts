@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as highlight from "../highlight.js";
 import type * as http from "../http.js";
 import type * as stats from "../stats.js";
 
@@ -25,6 +26,7 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  highlight: typeof highlight;
   http: typeof http;
   stats: typeof stats;
 }>;
