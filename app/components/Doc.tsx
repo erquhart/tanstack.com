@@ -14,11 +14,9 @@ import {
   TwitterLogoIcon,
   GitHubLogoIcon,
   CopyIcon,
+  Pencil1Icon,
 } from '@radix-ui/react-icons'
-import markedSequentialHooks, {
-  MarkdownHook,
-  type HtmlHook,
-} from 'marked-sequential-hooks'
+import { useState } from 'react'
 
 type ButtonElement = React.ElementRef<'button'>
 type ButtonProps = React.ComponentPropsWithoutRef<'button'> & {
@@ -76,21 +74,6 @@ type DocProps = {
   colorTo?: string
 }
 
-const layoutHook: HtmlHook = (html, data) => {
-  console.log('layoutHook')
-  console.log('data', data)
-  console.log('html', html)
-  return html
-}
-
-const myHook: MarkdownHook = (markdown, data) => {
-  console.log('myHook')
-  console.log('data', data)
-  console.log('markdown', markdown)
-
-  return markdown
-}
-
 export function Doc({
   title,
   content,
@@ -101,15 +84,20 @@ export function Doc({
   colorFrom,
   colorTo,
 }: DocProps) {
+  const [selection, setSelection] = useState<{
+    text: string
+    index: number
+  } | null>(null)
+  const [highlights, setHighlights] = useState<number[]>([])
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  console.log('whole selection', selection)
+  console.log('highlights', highlights)
+
   const { markup, headings } = React.useMemo(() => {
     const markup = marked.use(
       { gfm: true },
       gfmHeadingId(),
-      markedAlert(),
-      markedSequentialHooks({
-        markdownHooks: [myHook],
-        htmlHooks: [layoutHook],
-      })
+      markedAlert()
     )(content) as string
 
     const headings = getHeadingList()
@@ -118,12 +106,42 @@ export function Doc({
   }, [content])
 
   const isTocVisible = shouldRenderToc && headings && headings.length > 1
-
+  const getPath = (selection: Selection) => {
+    const path = [selection.anchorOffset]
+    const currentNode = selection
+    /*
+    while (currentNode?.parentNode !== containerRef.current) {
+      node = node.parentNode as Node
+    }
+      */
+    return path
+  }
   return (
     <Selection.Root
       onOpenChange={(isOpen) => {
-        console.log(isOpen)
-        console.log(window.getSelection())
+        const selection = window.getSelection()
+        console.log(
+          'selection',
+          selection,
+          selection?.anchorNode,
+          selection?.anchorNode?.parentNode,
+          selection?.anchorNode?.parentNode?.parentNode
+        )
+        if (selection?.anchorNode?.parentNode) {
+          console.log(
+            'path',
+            getPath(selection?.anchorNode?.parentNode, selection?.anchorOffset)
+          )
+        }
+        const text = selection?.toString()
+        const index = selection?.anchorOffset
+        if (!text || typeof index !== 'number') {
+          return
+        }
+        setSelection({
+          text,
+          index,
+        })
       }}
     >
       <div
@@ -144,12 +162,16 @@ export function Doc({
           <div className="h-4" />
           <Selection.Trigger asChild>
             <div
+              ref={containerRef}
               className={twMerge(
                 'prose prose-gray prose-sm prose-p:leading-7 dark:prose-invert max-w-none',
                 isTocVisible && 'pr-4 lg:pr-6'
               )}
             >
-              <Markdown htmlMarkup={markup} />
+              <Markdown
+                htmlMarkup={markup}
+                highlights={highlights.map((index) => index)}
+              />
             </div>
           </Selection.Trigger>
           <div className="h-12" />
@@ -179,33 +201,36 @@ export function Doc({
             'data-[state=open]:animate-slideDownAndFade data-[state=closed]:animate-slideUpAndFade'
           )}
         >
-          <Tooltip content="Copy">
-            <Button>
-              <CopyIcon className="w-5 h-5" />
-            </Button>
-          </Tooltip>
-          <Tooltip content="Share on Twitter">
-            <Button asChild>
-              <a
-                href="https://twitter.com/joaom__00"
-                target="_blank"
-                rel="noreferrer noopener"
-              >
-                <TwitterLogoIcon className="w-5 h-5" />
-              </a>
-            </Button>
-          </Tooltip>
-          <Tooltip content="Share on GitHub">
-            <Button asChild>
-              <a
-                href="https://github.com/joaom00"
-                target="_blank"
-                rel="noreferrer noopener"
-              >
-                <GitHubLogoIcon className="w-5 h-5" />
-              </a>
-            </Button>
-          </Tooltip>
+          <Button
+            onClick={() => {
+              if (selection) {
+                setHighlights([...highlights, selection.index])
+              }
+            }}
+          >
+            <Pencil1Icon className="w-5 h-5 text-gray-500" />
+          </Button>
+          <Button>
+            <CopyIcon className="w-5 h-5 text-gray-500" />
+          </Button>
+          <Button asChild>
+            <a
+              href="https://twitter.com/joaom__00"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              <TwitterLogoIcon className="w-5 h-5 text-gray-500" />
+            </a>
+          </Button>
+          <Button asChild>
+            <a
+              href="https://github.com/joaom00"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              <GitHubLogoIcon className="w-5 h-5 text-gray-500" />
+            </a>
+          </Button>
           <Selection.Arrow className="fill-white" />
         </Selection.Content>
       </Selection.Portal>

@@ -45,7 +45,7 @@ const makeHeading =
       />
     )
 
-const markdownComponents: Record<string, React.FC> = {
+const markdownComponents: Record<string, React.FC<React.PropsWithChildren>> = {
   a: MarkdownLink,
   pre: CodeBlock,
   h1: makeHeading('h1'),
@@ -77,8 +77,6 @@ const markdownComponents: Record<string, React.FC> = {
     />
   ),
   p: (props) => {
-    console.log(typeof props.children)
-    console.log(props.children)
     return <p {...props} />
   },
 }
@@ -211,26 +209,46 @@ const getHighlighter = cache(async (language: string, themes: string[]) => {
   return highlighter
 })
 
-const options: HTMLReactParserOptions = {
-  replace: (domNode) => {
-    if (domNode instanceof Element && domNode.attribs) {
-      const replacer = markdownComponents[domNode.name]
-      if (replacer) {
-        return React.createElement(
-          replacer,
-          attributesToProps(domNode.attribs),
-          domToReact(domNode.children, options)
-        )
+const getOptions = (highlights: number[]): HTMLReactParserOptions => {
+  const options: HTMLReactParserOptions = {
+    replace: (domNode, index) => {
+      if (domNode instanceof Element && domNode.attribs) {
+        const replacer =
+          domNode.name === 'p'
+            ? (props) => {
+                if (highlights.includes(index)) {
+                  console.log('highlight', highlights, index)
+                  return <p {...props} className="bg-yellow-500" />
+                }
+                return <p {...props} />
+              }
+            : markdownComponents[domNode.name]
+        if (replacer) {
+          return React.createElement(
+            replacer,
+            attributesToProps(domNode.attribs),
+            domToReact(domNode.children, options)
+          )
+        }
       }
-    }
 
-    return
-  },
+      return
+    },
+  }
+  return options
 }
 
-type MarkdownProps = { rawContent?: string; htmlMarkup?: string }
+type MarkdownProps = {
+  rawContent?: string
+  htmlMarkup?: string
+  highlights: number[]
+}
 
-export function Markdown({ rawContent, htmlMarkup }: MarkdownProps) {
+export function Markdown({
+  rawContent,
+  htmlMarkup,
+  highlights,
+}: MarkdownProps) {
   return React.useMemo(() => {
     if (rawContent) {
       const markup = marked.use(
@@ -239,13 +257,13 @@ export function Markdown({ rawContent, htmlMarkup }: MarkdownProps) {
         markedAlert()
       )(rawContent) as string
 
-      return parse(markup, options)
+      return parse(markup, getOptions(highlights))
     }
 
     if (htmlMarkup) {
-      return parse(htmlMarkup, options)
+      return parse(htmlMarkup, getOptions(highlights))
     }
 
     return null
-  }, [rawContent, htmlMarkup])
+  }, [rawContent, htmlMarkup, highlights])
 }
