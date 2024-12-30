@@ -210,9 +210,32 @@ const getHighlighter = cache(async (language: string, themes: string[]) => {
   return highlighter
 })
 
+const Mark = ({
+  children,
+  onClickMark,
+  markId,
+  ...props
+}: React.HTMLProps<HTMLSpanElement> & {
+  onClickMark: (
+    ref: React.RefObject<HTMLSpanElement>,
+    markId: Id<'highlights'>
+  ) => void
+  markId: Id<'highlights'>
+}) => {
+  const ref = React.useRef<HTMLSpanElement>(null)
+  return (
+    <span {...props} onClick={() => onClickMark(ref, markId)} ref={ref}>
+      {children}
+    </span>
+  )
+}
+
 const getOptions = (
   highlights: Doc<'highlights'>[],
-  onClickMark: (markId: Id<'highlights'>) => void
+  onClickMark: (
+    ref: React.RefObject<HTMLSpanElement>,
+    markId: Id<'highlights'>
+  ) => void
 ): HTMLReactParserOptions => {
   const options: HTMLReactParserOptions = {
     replace: (domNode, index) => {
@@ -225,12 +248,13 @@ const getOptions = (
                   return (
                     <p {...props}>
                       {children.slice(0, highlight.path[2])}
-                      <mark
+                      <Mark
                         className="bg-yellow-500"
-                        onClick={() => onClickMark(highlight._id)}
+                        onClickMark={(ref) => onClickMark(ref, highlight._id)}
+                        markId={highlight._id}
                       >
                         {children.slice(highlight.path[2], highlight.path[3])}
-                      </mark>
+                      </Mark>
                       {children.slice(highlight.path[3])}
                     </p>
                   )
@@ -257,7 +281,10 @@ type MarkdownProps = {
   rawContent?: string
   htmlMarkup?: string
   highlights: Doc<'highlights'>[]
-  onClickMark: (markId: Id<'highlights'>) => void
+  onClickMark: (
+    ref: React.RefObject<HTMLSpanElement>,
+    markId: Id<'highlights'>
+  ) => void
 }
 
 export function Markdown({

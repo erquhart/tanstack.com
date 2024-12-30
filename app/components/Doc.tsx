@@ -7,7 +7,7 @@ import { DocTitle } from '~/components/DocTitle'
 import { Markdown } from '~/components/Markdown'
 import { Toc } from './Toc'
 import { twMerge } from 'tailwind-merge'
-import * as Selection from 'selection-popover'
+import * as Selection from '~/components/SelectionPopover'
 import * as TooltipPrimitive from '@radix-ui/react-tooltip'
 import { Slot } from '@radix-ui/react-slot'
 import {
@@ -20,6 +20,11 @@ import { useState } from 'react'
 import { api } from 'convex/_generated/api'
 import { useQuery } from 'convex/react'
 import { useMutation } from 'convex/react'
+import {
+  TRIGGER_NAME,
+  useSelectionContext,
+} from '~/components/SelectionPopover'
+import { Id } from 'convex/_generated/dataModel'
 
 type ButtonElement = React.ElementRef<'button'>
 type ButtonProps = React.ComponentPropsWithoutRef<'button'> & {
@@ -77,7 +82,7 @@ type DocProps = {
   colorTo?: string
 }
 
-export function Doc({
+function Doc({
   title,
   content,
   repo,
@@ -86,10 +91,23 @@ export function Doc({
   shouldRenderToc = false,
   colorFrom,
   colorTo,
-}: DocProps) {
-  const [selectionPath, setSelectionPath] = useState<number[]>([])
-  const containerRef = React.useRef<HTMLDivElement>(null)
-
+  containerRef,
+  selectionPath,
+}: DocProps & {
+  containerRef: React.RefObject<HTMLDivElement>
+  selectionPath: number[]
+  setSelectionPath: (path: number[]) => void
+  getPath: (
+    selectedNode: Node,
+    focusNode: Node,
+    anchorOffset: number,
+    focusOffset: number
+  ) => number[] | undefined
+}) {
+  const context = useSelectionContext(TRIGGER_NAME)
+  const [activeMarkId, setActiveMarkId] = useState<Id<'highlights'> | null>(
+    null
+  )
   const setHighlight = useMutation(api.highlight.highlight)
   const deleteHighlight = useMutation(api.highlight.deleteHighlight)
   const highlights = useQuery(api.highlight.getHighlights, {
@@ -109,6 +127,128 @@ export function Doc({
   }, [content])
 
   const isTocVisible = shouldRenderToc && headings && headings.length > 1
+  return (
+    <>
+      <div
+        className={twMerge(
+          'w-full flex bg-white/70 dark:bg-black/50 mx-auto rounded-xl max-w-[936px]',
+          isTocVisible && 'max-w-full'
+        )}
+      >
+        <div
+          className={twMerge(
+            'flex overflow-auto flex-col w-full p-4 lg:p-6',
+            isTocVisible && 'border-r border-gray-500/20 !pr-0'
+          )}
+        >
+          {title ? <DocTitle>{title}</DocTitle> : null}
+          <div className="h-4" />
+          <div className="h-px bg-gray-500 opacity-20" />
+          <div className="h-4" />
+          <Selection.Trigger asChild>
+            <div
+              ref={containerRef}
+              className={twMerge(
+                'prose prose-gray prose-sm prose-p:leading-7 dark:prose-invert max-w-none',
+                isTocVisible && 'pr-4 lg:pr-6'
+              )}
+            >
+              <Markdown
+                htmlMarkup={markup}
+                highlights={highlights ?? []}
+                onClickMark={(ref, markId) => {
+                  context.onOpen(() => {
+                    const rect = ref.current?.getBoundingClientRect()
+                    const clientRects = ref.current?.getClientRects()
+                    if (!rect || !clientRects) return
+                    context.onOpenChange(true)
+                    context.onVirtualRefChange({
+                      getBoundingClientRect: () => rect,
+                      getClientRects: () => clientRects,
+                    })
+                    setActiveMarkId(markId)
+                  })
+                }}
+              />
+            </div>
+          </Selection.Trigger>
+          <div className="h-12" />
+          <div className="w-full h-px bg-gray-500 opacity-30" />
+          <div className="py-4 opacity-70">
+            <a
+              href={`https://github.com/${repo}/tree/${branch}/${filePath}`}
+              className="flex items-center gap-2"
+            >
+              <FaEdit /> Edit on GitHub
+            </a>
+          </div>
+          <div className="h-24" />
+        </div>
+
+        {isTocVisible && (
+          <div className="max-w-52 w-full hidden 2xl:block transition-all">
+            <Toc headings={headings} colorFrom={colorFrom} colorTo={colorTo} />
+          </div>
+        )}
+      </div>
+      <Selection.Portal>
+        <Selection.Content
+          sideOffset={8}
+          className={twMerge(
+            'flex items-center gap-1 w-full min-w-max rounded-md bg-white shadow-xl shadow-blackA6 px-2.5 h-10',
+            'data-[state=open]:animate-slideDownAndFade data-[state=closed]:animate-slideUpAndFade'
+          )}
+        >
+          <Button
+            onClick={(e) => {
+              if (activeMarkId) {
+                deleteHighlight({
+                  id: activeMarkId,
+                })
+                context.onClose()
+                return
+              }
+              if (selectionPath.length > 0 && selectionPath[1] === 0) {
+                setHighlight({
+                  title: title,
+                  path: selectionPath,
+                })
+              }
+            }}
+          >
+            <Pencil1Icon className="w-5 h-5 text-gray-500" />
+          </Button>
+          <Button>
+            <CopyIcon className="w-5 h-5 text-gray-500" />
+          </Button>
+          <Button asChild>
+            <a
+              href="https://twitter.com/joaom__00"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              <TwitterLogoIcon className="w-5 h-5 text-gray-500" />
+            </a>
+          </Button>
+          <Button asChild>
+            <a
+              href="https://github.com/joaom00"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              <GitHubLogoIcon className="w-5 h-5 text-gray-500" />
+            </a>
+          </Button>
+          <Selection.Arrow className="fill-white" />
+        </Selection.Content>
+      </Selection.Portal>
+    </>
+  )
+}
+
+function DocWithSelection(props: DocProps) {
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const [selectionPath, setSelectionPath] = useState<number[]>([])
   const getPath = (
     selectedNode: Node,
     focusNode: Node,
@@ -154,104 +294,15 @@ export function Doc({
         setSelectionPath(path)
       }}
     >
-      <div
-        className={twMerge(
-          'w-full flex bg-white/70 dark:bg-black/50 mx-auto rounded-xl max-w-[936px]',
-          isTocVisible && 'max-w-full'
-        )}
-      >
-        <div
-          className={twMerge(
-            'flex overflow-auto flex-col w-full p-4 lg:p-6',
-            isTocVisible && 'border-r border-gray-500/20 !pr-0'
-          )}
-        >
-          {title ? <DocTitle>{title}</DocTitle> : null}
-          <div className="h-4" />
-          <div className="h-px bg-gray-500 opacity-20" />
-          <div className="h-4" />
-          <Selection.Trigger asChild>
-            <div
-              ref={containerRef}
-              className={twMerge(
-                'prose prose-gray prose-sm prose-p:leading-7 dark:prose-invert max-w-none',
-                isTocVisible && 'pr-4 lg:pr-6'
-              )}
-            >
-              <Markdown
-                htmlMarkup={markup}
-                highlights={highlights ?? []}
-                onClickMark={(markId) => {
-                  deleteHighlight({
-                    id: markId,
-                  })
-                }}
-              />
-            </div>
-          </Selection.Trigger>
-          <div className="h-12" />
-          <div className="w-full h-px bg-gray-500 opacity-30" />
-          <div className="py-4 opacity-70">
-            <a
-              href={`https://github.com/${repo}/tree/${branch}/${filePath}`}
-              className="flex items-center gap-2"
-            >
-              <FaEdit /> Edit on GitHub
-            </a>
-          </div>
-          <div className="h-24" />
-        </div>
-
-        {isTocVisible && (
-          <div className="max-w-52 w-full hidden 2xl:block transition-all">
-            <Toc headings={headings} colorFrom={colorFrom} colorTo={colorTo} />
-          </div>
-        )}
-      </div>
-      <Selection.Portal>
-        <Selection.Content
-          sideOffset={8}
-          className={twMerge(
-            'flex items-center gap-1 w-full min-w-max rounded-md bg-white shadow-xl shadow-blackA6 px-2.5 h-10',
-            'data-[state=open]:animate-slideDownAndFade data-[state=closed]:animate-slideUpAndFade'
-          )}
-        >
-          <Button
-            onClick={(e) => {
-              if (selectionPath.length > 0 && selectionPath[1] === 0) {
-                setHighlight({
-                  title: title,
-                  path: selectionPath,
-                })
-              }
-            }}
-          >
-            <Pencil1Icon className="w-5 h-5 text-gray-500" />
-          </Button>
-          <Button>
-            <CopyIcon className="w-5 h-5 text-gray-500" />
-          </Button>
-          <Button asChild>
-            <a
-              href="https://twitter.com/joaom__00"
-              target="_blank"
-              rel="noreferrer noopener"
-            >
-              <TwitterLogoIcon className="w-5 h-5 text-gray-500" />
-            </a>
-          </Button>
-          <Button asChild>
-            <a
-              href="https://github.com/joaom00"
-              target="_blank"
-              rel="noreferrer noopener"
-            >
-              <GitHubLogoIcon className="w-5 h-5 text-gray-500" />
-            </a>
-          </Button>
-          <Selection.Arrow className="fill-white" />
-        </Selection.Content>
-      </Selection.Portal>
+      <Doc
+        {...props}
+        getPath={getPath}
+        containerRef={containerRef}
+        selectionPath={selectionPath}
+        setSelectionPath={setSelectionPath}
+      />
     </Selection.Root>
   )
 }
+
+export { DocWithSelection as Doc }
