@@ -5,11 +5,15 @@ export const highlight = mutation({
   args: {
     title: v.string(),
     path: v.array(v.number()),
+    anchorIndex: v.number(),
+    focusIndex: v.number(),
   },
   handler: async (ctx, args) => {
     ctx.db.insert('highlights', {
       title: args.title,
       path: args.path,
+      anchorIndex: args.anchorIndex,
+      focusIndex: args.focusIndex,
     })
   },
 })

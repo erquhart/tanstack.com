@@ -205,13 +205,19 @@ function Doc({
                 deleteHighlight({
                   id: activeMarkId,
                 })
+                setActiveMarkId(null)
                 context.onClose()
                 return
               }
               if (selectionPath.length > 0 && selectionPath[1] === 0) {
+                const anchorIndexes = selectionPath.slice(-2)
+                const anchorIndex = Math.min(...anchorIndexes)
+                const focusIndex = Math.max(...anchorIndexes)
                 setHighlight({
                   title: title,
-                  path: selectionPath,
+                  path: selectionPath.slice(0, -2),
+                  anchorIndex,
+                  focusIndex,
                 })
               }
             }}

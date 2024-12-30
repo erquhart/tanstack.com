@@ -5,5 +5,7 @@ export default defineSchema({
   highlights: defineTable({
     title: v.string(),
     path: v.array(v.number()),
+    anchorIndex: v.number(),
+    focusIndex: v.number(),
   }),
 })

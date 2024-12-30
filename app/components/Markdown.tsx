@@ -46,7 +46,19 @@ const makeHeading =
       />
     )
 
-const markdownComponents: Record<string, React.FC<React.PropsWithChildren>> = {
+const markdownComponents: Record<
+  string,
+  React.FC<
+    React.PropsWithChildren<{
+      highlights: Doc<'highlights'>[]
+      onClickMark: (
+        ref: React.RefObject<HTMLSpanElement>,
+        markId: Id<'highlights'>
+      ) => void
+      index: number
+    }>
+  >
+> = {
   a: MarkdownLink,
   pre: CodeBlock,
   h1: makeHeading('h1'),
@@ -77,8 +89,43 @@ const markdownComponents: Record<string, React.FC<React.PropsWithChildren>> = {
       // decoding="async"
     />
   ),
-  p: (props) => {
-    return <p {...props} />
+  p: ({
+    children,
+    highlights,
+    onClickMark,
+    index,
+    ...props
+  }: HTMLProps<HTMLParagraphElement> & {
+    highlights: Doc<'highlights'>[]
+    onClickMark: (
+      ref: React.RefObject<HTMLSpanElement>,
+      markId: Id<'highlights'>
+    ) => void
+    index: number
+  }) => {
+    const elementHighlights = highlights
+      .filter((h) => h.path[0] === index)
+      .sort((a, b) => a.anchorIndex - b.anchorIndex)
+    if (!elementHighlights.length) {
+      return <p {...props}>{children}</p>
+    }
+    return (
+      <p {...props}>
+        {elementHighlights.map((highlight, index) => (
+          <>
+            {children?.slice(0, highlight.anchorIndex)}
+            <Mark
+              className="bg-yellow-500"
+              onClickMark={(ref) => onClickMark(ref, highlight._id)}
+              markId={highlight._id}
+            >
+              {children?.slice(highlight.anchorIndex, highlight.focusIndex)}
+            </Mark>
+            {children?.slice(highlight.focusIndex)}
+          </>
+        ))}
+      </p>
+    )
   },
 }
 
@@ -239,33 +286,31 @@ const getOptions = (
 ): HTMLReactParserOptions => {
   const options: HTMLReactParserOptions = {
     replace: (domNode, index) => {
+      if (domNode.name === 'p') {
+        console.log('domNode', domNode)
+      }
       if (domNode instanceof Element && domNode.attribs) {
-        const replacer =
-          domNode.name === 'p'
-            ? ({ children, ...props }) => {
-                const highlight = highlights.find((h) => h.path[0] === index)
-                if (highlight) {
-                  return (
-                    <p {...props}>
-                      {children.slice(0, highlight.path[2])}
-                      <Mark
-                        className="bg-yellow-500"
-                        onClickMark={(ref) => onClickMark(ref, highlight._id)}
-                        markId={highlight._id}
-                      >
-                        {children.slice(highlight.path[2], highlight.path[3])}
-                      </Mark>
-                      {children.slice(highlight.path[3])}
-                    </p>
-                  )
-                }
-                return <p {...props}>{children}</p>
-              }
-            : markdownComponents[domNode.name]
+        if (
+          domNode.children.some((node) =>
+            node.data?.includes('see the Code-Based Routing')
+          )
+        ) {
+          console.log('type', domNode.type)
+          console.log('nodeType', domNode.nodeType)
+          console.log('name', domNode.name)
+          console.log('attribs', domNode.attribs)
+          console.log('children', domNode.children)
+        }
+        const replacer = markdownComponents[domNode.name]
         if (replacer) {
           return React.createElement(
             replacer,
-            attributesToProps(domNode.attribs),
+            {
+              ...attributesToProps(domNode.attribs),
+              highlights,
+              onClickMark,
+              index,
+            },
             domToReact(domNode.children, options)
           )
         }
