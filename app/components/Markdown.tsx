@@ -13,6 +13,7 @@ import parse, {
 import { marked } from 'marked'
 import { gfmHeadingId } from 'marked-gfm-heading-id'
 import markedAlert from 'marked-alert'
+import { Doc, Id } from 'convex/_generated/dataModel'
 
 const CustomHeading = ({
   Comp,
@@ -209,22 +210,28 @@ const getHighlighter = cache(async (language: string, themes: string[]) => {
   return highlighter
 })
 
-const getOptions = (highlights: number[][]): HTMLReactParserOptions => {
+const getOptions = (
+  highlights: Doc<'highlights'>[],
+  onClickMark: (markId: Id<'highlights'>) => void
+): HTMLReactParserOptions => {
   const options: HTMLReactParserOptions = {
     replace: (domNode, index) => {
       if (domNode instanceof Element && domNode.attribs) {
         const replacer =
           domNode.name === 'p'
             ? ({ children, ...props }) => {
-                const highlight = highlights.find((h) => h[0] === index)
+                const highlight = highlights.find((h) => h.path[0] === index)
                 if (highlight) {
                   return (
                     <p {...props}>
-                      {children.slice(0, highlight[2])}
-                      <mark className="bg-yellow-500">
-                        {children.slice(highlight[2], highlight[3])}
+                      {children.slice(0, highlight.path[2])}
+                      <mark
+                        className="bg-yellow-500"
+                        onClick={() => onClickMark(highlight._id)}
+                      >
+                        {children.slice(highlight.path[2], highlight.path[3])}
                       </mark>
-                      {children.slice(highlight[3])}
+                      {children.slice(highlight.path[3])}
                     </p>
                   )
                 }
@@ -249,13 +256,15 @@ const getOptions = (highlights: number[][]): HTMLReactParserOptions => {
 type MarkdownProps = {
   rawContent?: string
   htmlMarkup?: string
-  highlights: number[][]
+  highlights: Doc<'highlights'>[]
+  onClickMark: (markId: Id<'highlights'>) => void
 }
 
 export function Markdown({
   rawContent,
   htmlMarkup,
   highlights,
+  onClickMark,
 }: MarkdownProps) {
   return React.useMemo(() => {
     if (rawContent) {
@@ -265,13 +274,13 @@ export function Markdown({
         markedAlert()
       )(rawContent) as string
 
-      return parse(markup, getOptions(highlights))
+      return parse(markup, getOptions(highlights, onClickMark))
     }
 
     if (htmlMarkup) {
-      return parse(htmlMarkup, getOptions(highlights))
+      return parse(htmlMarkup, getOptions(highlights, onClickMark))
     }
 
     return null
-  }, [rawContent, htmlMarkup, highlights])
+  }, [rawContent, htmlMarkup, highlights, onClickMark])
 }

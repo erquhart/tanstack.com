@@ -180,7 +180,12 @@ export function Doc({
             >
               <Markdown
                 htmlMarkup={markup}
-                highlights={highlights?.map((h) => h.path) ?? []}
+                highlights={highlights ?? []}
+                onClickMark={(markId) => {
+                  deleteHighlight({
+                    id: markId,
+                  })
+                }}
               />
             </div>
           </Selection.Trigger>
@@ -213,12 +218,6 @@ export function Doc({
         >
           <Button
             onClick={(e) => {
-              if (highlights?.some((h) => h.path === selectionPath)) {
-                deleteHighlight({
-                  id: highlights.find((h) => h.path === selectionPath)?.id,
-                })
-                return
-              }
               if (selectionPath.length > 0 && selectionPath[1] === 0) {
                 setHighlight({
                   title: title,
